@@ -4,13 +4,20 @@ import { db } from "@/db";
 import { galleryItems } from "@/db/schema";
 import { desc } from "drizzle-orm";
 
-export const revalidate = 0; // always fresh from DB
+export const revalidate = 0;
 
 export default async function GalleryPage() {
-  const items = await db
-    .select()
-    .from(galleryItems)
-    .orderBy(desc(galleryItems.createdAt));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let items: any[] = [];
+
+  try {
+    items = await db
+      .select()
+      .from(galleryItems)
+      .orderBy(desc(galleryItems.createdAt));
+  } catch {
+    // DB error — show empty state
+  }
 
   const mappedItems = items.map((item) => ({
     id: item.id,
@@ -24,8 +31,10 @@ export default async function GalleryPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1 className={styles.title}>School Gallery</h1>
-        <p className={styles.subtitle}>Glimpses of life at Saraswati Convent School</p>
+        <h1 className={styles.title}>Our Gallery</h1>
+        <p className={styles.subtitle}>
+          Glimpses of learning and activities at English Seekhe By Chaturvedi Sir
+        </p>
       </div>
 
       {mappedItems.length === 0 ? (

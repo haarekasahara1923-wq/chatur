@@ -11,35 +11,49 @@ export async function POST(request: Request) {
     const { username, password } = await request.json();
 
     if (!username || !password) {
-      return NextResponse.json({ error: "Username and password required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Username and password required" },
+        { status: 400 }
+      );
     }
 
-    // Check if any admin exists. If not, create the default one.
-    let adminList = await db.select().from(admins).limit(1);
-    
+    // Check if any admin exists. If not, create the default one from env vars.
+    const adminList = await db.select().from(admins).limit(1);
+
     if (adminList.length === 0) {
       const defaultUsername = process.env.ADMIN_USERNAME || "admin";
-      const defaultPassword = process.env.ADMIN_PASSWORD || "saraswati@123";
+      const defaultPassword = process.env.ADMIN_PASSWORD || "chaturvedi@123";
       const passwordHash = await bcrypt.hash(defaultPassword, 10);
-      
+
       await db.insert(admins).values({
         username: defaultUsername,
-        passwordHash
+        passwordHash,
       });
     }
 
-    const adminUser = await db.query.admins.findFirst({
-      where: eq(admins.username, username),
-    });
+    // Use db.select with eq — compatible with neon-http driver
+    const adminRows = await db
+      .select()
+      .from(admins)
+      .where(eq(admins.username, username))
+      .limit(1);
+
+    const adminUser = adminRows[0];
 
     if (!adminUser) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Invalid credentials" },
+        { status: 401 }
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(password, adminUser.passwordHash);
 
     if (!isPasswordValid) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Invalid credentials" },
+        { status: 401 }
+      );
     }
 
     // Generate JWT
@@ -58,6 +72,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Login error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }
