@@ -85,3 +85,16 @@ export const classDetails = pgTable("class_details", {
   isActive: boolean("is_active").default(true),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Courses
+export const courses = pgTable("courses", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  description: text("description"),
+  fee: varchar("fee", { length: 100 }),
+  batchTimings: text("batch_timings"),
+  duration: varchar("duration", { length: 100 }),
+  isActive: boolean("is_active").default(true),
+  displayOrder: integer("display_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
