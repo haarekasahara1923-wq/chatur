@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { uploadMedia } from "@/lib/upload";
 
 export default function AdminSettings() {
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -35,8 +36,8 @@ export default function AdminSettings() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert("File is too large. Please select a logo smaller than 5MB.");
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File is too large. Please select a logo smaller than 10MB.");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -52,28 +53,9 @@ export default function AdminSettings() {
 
     try {
       if (selectedFile) {
-        setMsg("Uploading logo...");
-        const sigRes = await fetch("/api/cloudinary-sign");
-        const sigData = await sigRes.json();
-        
-        if (!sigRes.ok || !sigData.signature) {
-          throw new Error(sigData.error || "Failed to get upload signature");
-        }
-        
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("api_key", sigData.apiKey);
-        formData.append("timestamp", sigData.timestamp);
-        formData.append("signature", sigData.signature);
-        
-        const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`, {
-          method: "POST",
-          body: formData
-        });
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok) throw new Error(uploadData.error?.message || "Cloudinary upload failed");
-        
-        updatedSettings["school_logo_url"] = uploadData.secure_url;
+        setMsg("Uploading logo to Cloudinary...");
+        const uploadResult = await uploadMedia(selectedFile, "image");
+        updatedSettings["school_logo_url"] = uploadResult.url;
         setSettings(updatedSettings); // Update local state so preview updates
       }
       
@@ -95,7 +77,7 @@ export default function AdminSettings() {
         setMsg("Error: " + (data.error || "Unknown"));
       }
     } catch (err: any) {
-      setMsg("Error: " + err.message);
+      setMsg("Error: " + (err.message || "Failed to save settings"));
     } finally {
       setSaving(false);
     }

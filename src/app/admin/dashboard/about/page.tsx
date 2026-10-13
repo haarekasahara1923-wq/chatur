@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { uploadMedia } from "@/lib/upload";
 
 export default function AdminAbout() {
   const [items, setItems] = useState<any[]>([]);
@@ -95,28 +96,9 @@ export default function AdminAbout() {
     try {
       if (selectedFile) {
         setMsg("Uploading photo...");
-        const sigRes = await fetch("/api/cloudinary-sign");
-        const sigData = await sigRes.json();
-        
-        if (!sigRes.ok || !sigData.signature) {
-          throw new Error(sigData.error || "Failed to get upload signature");
-        }
-        
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("api_key", sigData.apiKey);
-        formData.append("timestamp", sigData.timestamp);
-        formData.append("signature", sigData.signature);
-        
-        const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`, {
-          method: "POST",
-          body: formData
-        });
-        const uploadData = await uploadRes.json();
-        if (!uploadRes.ok) throw new Error(uploadData.error?.message || "Cloudinary upload failed");
-        
-        finalPhotoUrl = uploadData.secure_url;
-        finalPhotoPublicId = uploadData.public_id;
+        const uploadResult = await uploadMedia(selectedFile, "image");
+        finalPhotoUrl = uploadResult.url;
+        finalPhotoPublicId = uploadResult.publicId;
       }
       
       setMsg("Saving to database...");

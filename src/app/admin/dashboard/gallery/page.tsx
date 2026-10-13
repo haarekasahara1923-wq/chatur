@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { uploadMedia } from "@/lib/upload";
 
 export default function AdminGallery() {
   const [items, setItems] = useState<any[]>([]);
@@ -79,45 +80,21 @@ export default function AdminGallery() {
     setMsg("Uploading to Cloudinary... This may take a while for large files.");
     
     try {
-      // 1. Get Signature from Backend
-      const sigRes = await fetch("/api/cloudinary-sign");
-      const sigData = await sigRes.json();
-      
-      if (!sigRes.ok || !sigData.signature) {
-        throw new Error(sigData.error || "Failed to get upload signature. Backend not configured properly.");
-      }
-
-      // 2. Upload to Cloudinary Directly using Signed Upload
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("api_key", sigData.apiKey);
-      formData.append("timestamp", sigData.timestamp);
-      formData.append("signature", sigData.signature);
-      
-      // Use /auto/upload to handle both images and videos properly
-      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${sigData.cloudName}/auto/upload`, {
-        method: "POST",
-        body: formData
-      });
-      
-      const uploadData = await uploadRes.json();
-      
-      if (!uploadRes.ok) {
-        throw new Error(uploadData.error?.message || "Cloudinary upload failed");
-      }
+      // 1. Upload to Cloudinary using resilient helper
+      const uploadData = await uploadMedia(selectedFile, addType === "video" ? "video" : "image");
 
       setMsg("Saving to database...");
 
-      // 3. Save to Database
+      // 2. Save to Database
       const res = await fetch("/api/gallery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: newItem.title.trim(),
           type: addType,
-          cloudinaryUrl: uploadData.secure_url,
-          cloudinaryPublicId: uploadData.public_id,
-          thumbnailUrl: uploadData.thumbnail_url || uploadData.secure_url,
+          cloudinaryUrl: uploadData.url,
+          cloudinaryPublicId: uploadData.publicId,
+          thumbnailUrl: uploadData.thumbnailUrl || uploadData.url,
           category: newItem.category.trim() || "General",
           description: newItem.description.trim(),
         }),
